@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>QA Review Board</title>
+
+<style>
+
+*{
+    box-sizing:border-box;
+}
+
+body{
+    margin:0;
+    font-family:'Segoe UI',sans-serif;
+    background:#f4f6f9;
+}
+
+header{
+    background:linear-gradient(135deg,#1e3a8a,#2563eb);
+    color:white;
+    padding:16px;
+    display:flex;
+    gap:10px;
+    align-items:center;
+    flex-wrap:wrap;
+}
+
+h1{
+    margin:0;
+    margin-right:20px;
+}
+
+.btn{
+    border:none;
+    padding:10px 14px;
+    border-radius:8px;
+    cursor:pointer;
+    background:#2563eb;
+    color:white;
+}
+
+.btn:hover{
+    opacity:.9;
+}
+
+.btn-edit{
+    background:#059669;
+}
+
+.search,
+select{
+    padding:10px;
+    border-radius:8px;
+    border:1px solid #ddd;
+}
+
+.board{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:16px;
+    padding:16px;
+}
+
+.column{
+    background:#e9edf5;
+    border-radius:12px;
+    min-height:80vh;
+}
+
+.column-header{
+    padding:15px;
+    font-weight:bold;
+    display:flex;
+    justify-content:space-between;
+}
+
+.cards{
+    padding:10px;
+    min-height:70vh;
+}
+
+.card{
+    background:#fff;
+    border-radius:10px;
+    padding:12px;
+    margin-bottom:12px;
+    box-shadow:0 2px 8px rgba(0,0,0,.08);
+    cursor:grab;
+    transition:.2s;
+}
+
+.card:hover{
+    transform:translateY(-2px);
+}
+
+.badge{
+    display:inline-block;
+    padding:4px 8px;
+    color:white;
+    border-radius:20px;
+    font-size:12px;
+    margin:5px 0;
+}
+
+.modal{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.5);
+    justify-content:center;
+    align-items:center;
+    z-index:999;
+}
+
+.modal-content{
+    background:white;
+    width:90%;
+    max-width:900px;
+    max-height:90vh;
+    overflow:auto;
+    border-radius:12px;
+    padding:20px;
+}
+
+.modal-content input,
+.modal-content textarea,
+.modal-content select{
+    width:100%;
+    padding:10px;
+    margin-top:5px;
+    margin-bottom:10px;
+}
+
+.actions{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+}
+
+#search{
+    min-width:250px;
+}
+
+@media(max-width:900px){
+
+    .board{
+        grid-template-columns:1fr;
+    }
+
+    .column{
+        min-height:auto;
+    }
+}
+
+</style>
+
+</head>
+
+<body>
+
+<header>
+
+    <h1>🧪 QA Review Board</h1>
+
+    <input
+        id="file"
+        type="file"
+        accept=".csv,.json">
+
+    <button
+        class="btn"
+        onclick="clearBoard()">
+        Limpar
+    </button>
+
+    <button
+        class="btn"
+        onclick="exportAll()">
+        Exportar CSV + JSON
+    </button>
+
+    <select id="priorityFilter">
+        <option value="">
+            Todas Prioridades
+        </option>
+
+        <option>
+            Alta
+        </option>
+
+        <option>
+            Média
+        </option>
+
+        <option>
+            Baixa
+        </option>
+    </select>
+
+    <input
+        id="search"
+        class="search"
+        placeholder="Pesquisar cenário">
+
+</header>
+
+<div class="board">
+
+    <section class="column">
+
+        <div class="column-header">
+            📝 A Revisar
+            <span id="todoCount">0</span>
+        </div>
+
+        <div
+            id="todo"
+            class="cards">
+        </div>
+
+    </section>
+
+    <section class="column">
+
+        <div class="column-header">
+            🔍 Em Revisão
+            <span id="reviewCount">0</span>
+        </div>
+
+        <div
+            id="review"
+            class="cards">
+        </div>
+
+    </section>
+
+    <section class="column">
+
+        <div class="column-header">
+            ✅ Revisado
+            <span id="doneCount">0</span>
+        </div>
+
+        <div
+            id="done"
+            class="cards">
+        </div>
+
+    </section>
+
+</div>
+
+<!-- MODAL VISUALIZAÇÃO -->
+
+<div
+    class="modal"
+    id="modal">
+
+    <div class="modal-content">
+
+        <button
+            class="btn"
+            onclick="closeModal()">
+            Fechar
+        </button>
+
+        <h2 id="title"></h2>
+
+        <div id="details"></div>
+
+    </div>
+
+</div>
+
+<!-- MODAL EDIÇÃO -->
+
+<div
+    class="modal"
+    id="editModal">
+
+    <div class="modal-content">
+
+        <h2>Editar Cenário</h2>
+
+        <input
+            type="hidden"
+            id="editId">
+
+        <label>Nome</label>
+
+        <input id="editName">
+
+        <label>Objetivo</label>
+
+        <textarea
+            id="editObjective">
+        </textarea>
+
+        <label>Pré-condição</label>
+
+        <textarea
+            id="editPre">
+        </textarea>
+
+        <label>Prioridade</label>
+
+        <select id="editPriority">
+
+            <option>
+                Alta
+            </option>
+
+            <option>
+                Média
+            </option>
+
+            <option>
+                Baixa
+            </option>
+
+        </select>
+
+        <div id="editSteps"></div>
+
+        <div class="actions">
+
+            <button
+                class="btn"
+                onclick="saveEdit()">
+                Salvar
+            </button>
+
+            <button
+                class="btn btn-edit"
+                onclick="closeEditModal()">
+                Cancelar
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script src="app.js"></script>
+
+</body>
+
+</html>
